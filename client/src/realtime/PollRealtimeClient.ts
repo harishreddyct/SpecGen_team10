@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { PollOption } from '../types';
+import { API_BASE_URL } from '../config';
 
 export interface VoteRecordedPayload {
   pollId: string;
@@ -17,9 +18,9 @@ let socket: Socket | null = null;
 
 function getSocket(): Socket {
   if (!socket) {
-    // No URL: connects to the page's own origin, which the Vite dev
-    // server proxies to the backend (see vite.config.ts).
-    socket = io();
+    // Falls back to the page's own origin (proxied to the backend in dev,
+    // see vite.config.ts) unless VITE_API_BASE_URL points it elsewhere.
+    socket = API_BASE_URL ? io(API_BASE_URL) : io();
   }
   return socket;
 }

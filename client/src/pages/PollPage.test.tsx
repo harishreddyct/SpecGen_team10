@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import PollPage from './PollPage';
@@ -58,8 +58,13 @@ describe('PollPage', () => {
     renderPollPage();
 
     await waitFor(() => expect(screen.getByText('Where to eat?')).toBeInTheDocument());
-    expect(screen.getByText('Tacos')).toBeInTheDocument();
-    expect(screen.getByText('Pizza')).toBeInTheDocument();
+    // "Tacos"/"Pizza" appear in both the voting form's radio labels and the
+    // live results list, so scope each query to disambiguate.
+    expect(screen.getByRole('radio', { name: 'Tacos' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Pizza' })).toBeInTheDocument();
+    const liveResults = screen.getByRole('list', { name: /live results/i });
+    expect(within(liveResults).getByText('Tacos')).toBeInTheDocument();
+    expect(within(liveResults).getByText('Pizza')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit vote/i })).toBeInTheDocument();
   });
 
