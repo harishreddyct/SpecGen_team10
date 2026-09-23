@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: teamlunch-poll-server
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci && npm run build -w server
+    startCommand: npm run start -w server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      # Comma-separated Vercel client origin(s), e.g.
+      # https://spec-gen-team10.vercel.app,https://spec-gen-team10-git-preview.vercel.app
+      - key: CLIENT_ORIGIN
+        sync: false
+      # The Vercel client's URL — used to build shareable poll links, e.g.
+      # https://spec-gen-team10.vercel.app
+      - key: PUBLIC_BASE_URL
+        sync: false
