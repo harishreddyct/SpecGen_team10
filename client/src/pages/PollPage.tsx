@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PollApiClient, HttpError } from '../api/PollApiClient';
 import { PollRealtimeClient } from '../realtime/PollRealtimeClient';
@@ -16,6 +16,8 @@ export default function PollPage() {
   const { pollId } = useParams<{ pollId: string }>();
   const [poll, setPoll] = useState<Poll | null>(null);
   const [state, setState] = useState<LoadState>('loading');
+  const [announcement, setAnnouncement] = useState('');
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const refetch = useCallback(async () => {
     if (!pollId) return;
@@ -36,6 +38,14 @@ export default function PollPage() {
     refetch();
   }, [refetch]);
 
+  // Move keyboard/screen-reader focus to the page heading once content loads,
+  // so a voter arriving from a shared link lands somewhere meaningful.
+  useEffect(() => {
+    if (state === 'ready' || state === 'not-found') {
+      headingRef.current?.focus();
+    }
+  }, [state]);
+
   useEffect(() => {
     if (!pollId) return;
 
@@ -49,6 +59,7 @@ export default function PollPage() {
     const unsubClose = PollRealtimeClient.onPollClosed((payload) => {
       if (payload.pollId !== pollId) return;
       setPoll((prev) => (prev ? { ...prev, status: 'closed', options: payload.options } : prev));
+      setAnnouncement('The organizer closed this poll. Showing final results.');
     });
 
     // Reconnect could have missed events — resync from the server.
@@ -65,13 +76,19 @@ export default function PollPage() {
   }, [pollId, refetch]);
 
   if (state === 'loading') {
-    return <div className="page">Loading poll...</div>;
+    return (
+      <div className="page" role="status" aria-live="polite">
+        Loading poll…
+      </div>
+    );
   }
 
   if (state === 'not-found') {
     return (
       <div className="page">
-        <h1>Poll not found</h1>
+        <h1 tabIndex={-1} ref={headingRef}>
+          Poll not found
+        </h1>
         <p>This link doesn't match a known poll. Double-check the URL, or ask the organizer for a fresh link.</p>
       </div>
     );
@@ -89,13 +106,20 @@ export default function PollPage() {
 
   return (
     <div className="page poll-page">
-      <h1>{poll.title}</h1>
+      <span className="visually-hidden" aria-live="polite">
+        {announcement}
+      </span>
+      <h1 tabIndex={-1} ref={headingRef}>
+        {poll.title}
+      </h1>
       <CopyLinkButton link={poll.shareUrl} />
 
       {isOrganizer(poll.pollId) && poll.status === 'open' && (
         <CloseByOrganizerControl
           pollId={poll.pollId}
-          onClosed={(closed) => setPoll((prev) => (prev ? { ...prev, status: closed.status, options: closed.options } : prev))}
+          onClosed={(closed) =>
+            setPoll((prev) => (prev ? { ...prev, status: closed.status, options: closed.options } : prev))
+          }
         />
       )}
 

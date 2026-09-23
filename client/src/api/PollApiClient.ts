@@ -1,6 +1,7 @@
 import { ApiErrorBody, Poll, VoteResponse } from '../types';
+import { API_BASE_URL } from '../config';
 
-const API_BASE = '/api';
+const API_BASE = `${API_BASE_URL}/api`;
 
 /** Malformed-request / infrastructure failure — the { code, message } shape from api-contracts.md. */
 export class HttpError extends Error {

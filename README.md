@@ -84,6 +84,53 @@ specs/    Source specification this implementation was built from
 | `client/src/api/PollApiClient.ts` | HTTP client |
 | `client/src/realtime/PollRealtimeClient.ts` | WebSocket client |
 
+## Deploying
+
+This app is two pieces that need two different kinds of hosting — you can't
+just point Vercel at the repo root and expect it to work.
+
+- **`client/`** is a static Vite build once compiled — a great fit for
+  Vercel.
+- **`server/`** is a long-running Express + Socket.IO process holding
+  in-memory state. Vercel's Serverless Functions don't keep a persistent
+  process or WebSocket connection alive between requests, so if you deploy
+  `server/` there too, the API will behave inconsistently and live updates
+  won't work at all. Use a host built for a persistent Node process instead
+  — Render, Railway, and Fly.io all have free tiers that work well here.
+
+### 1. Deploy the server (Render, Railway, Fly.io, or similar)
+
+- Build command: `npm install && npm run build -w server` (installs the
+  workspace, then compiles `server/` to `server/dist`)
+- Start command: `npm run start -w server`
+- Environment variables:
+  - `PORT` — usually set automatically by the host
+  - `CLIENT_ORIGIN` — the Vercel URL from step 2 (comma-separate multiple
+    values, e.g. your production domain plus a Vercel preview URL)
+  - `PUBLIC_BASE_URL` — the same Vercel URL, used to build each poll's
+    `shareUrl`
+
+Note the server's own URL once it's live (e.g.
+`https://teamlunch-poll-api.onrender.com`) — you'll need it in step 2.
+
+### 2. Deploy the client to Vercel
+
+- **Root Directory:** `client`
+- **Framework preset:** Vite (auto-detected)
+- **Build command / output directory:** defaults (`vite build` / `dist`)
+- **Environment variable:** `VITE_API_BASE_URL` — the server URL from step 1
+
+`client/vercel.json` already adds the SPA rewrite Vercel needs for
+client-side routes: without it, opening or refreshing a shared poll link
+(`/polls/:pollId`) directly would 404, since Vercel's static file server
+doesn't know that route unless it falls back to `index.html`.
+
+### 3. Keep CORS in sync
+
+If the client's URL ever changes (a new custom domain, a new preview URL),
+update `CLIENT_ORIGIN` on the server to match — otherwise the browser will
+block the API and WebSocket requests as cross-origin.
+
 ## Out of scope (by design)
 
 - Multiple concurrent polls per organizer / an organizer dashboard

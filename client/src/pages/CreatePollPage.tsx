@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PollApiClient, HttpError } from '../api/PollApiClient';
 import { markAsOrganizer } from '../lib/organizerStorage';
@@ -16,6 +16,7 @@ export default function CreatePollPage() {
   const [optionCountError, setOptionCountError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -36,6 +37,7 @@ export default function CreatePollPage() {
 
   function validate(): boolean {
     let ok = true;
+    let firstInvalidId: string | null = null;
     setTitleError(null);
     setOptionErrors({});
     setOptionCountError(null);
@@ -43,6 +45,7 @@ export default function CreatePollPage() {
 
     if (!title.trim()) {
       setTitleError('Title is required.');
+      firstInvalidId = 'title';
       ok = false;
     }
 
@@ -55,11 +58,18 @@ export default function CreatePollPage() {
     options.forEach((option, index) => {
       if (!option.trim()) {
         errors[index] = 'This option cannot be empty.';
+        if (!firstInvalidId) firstInvalidId = `option-input-${index}`;
       }
     });
     if (Object.keys(errors).length > 0) {
       setOptionErrors(errors);
       ok = false;
+    }
+
+    if (!ok && firstInvalidId) {
+      // Move focus to the first invalid field so keyboard/screen-reader users land right on it.
+      const targetId = firstInvalidId;
+      requestAnimationFrame(() => document.getElementById(targetId)?.focus());
     }
 
     return ok;
@@ -79,9 +89,14 @@ export default function CreatePollPage() {
       navigate(`/polls/${poll.pollId}`);
     } catch (err) {
       if (err instanceof HttpError) {
-        if (err.code === 'INVALID_TITLE') setTitleError(err.message);
-        else if (err.code === 'INVALID_OPTION_COUNT' || err.code === 'INVALID_OPTION') setOptionCountError(err.message);
-        else setBanner('Something went wrong. Try again.');
+        if (err.code === 'INVALID_TITLE') {
+          setTitleError(err.message);
+          titleInputRef.current?.focus();
+        } else if (err.code === 'INVALID_OPTION_COUNT' || err.code === 'INVALID_OPTION') {
+          setOptionCountError(err.message);
+        } else {
+          setBanner('Something went wrong. Try again.');
+        }
       } else {
         setBanner('Something went wrong. Try again.');
       }
@@ -92,8 +107,8 @@ export default function CreatePollPage() {
 
   return (
     <div className="page create-poll-page">
-      <h1>Team Lunch Poll</h1>
-      <p>Propose a few lunch options and share the link with your team.</p>
+      <h1>TeamLunch Poll</h1>
+      <p className="lede">Propose a few lunch options and share the link with your team — no account needed.</p>
 
       {banner && (
         <div role="alert" className="banner banner-error">
@@ -101,15 +116,24 @@ export default function CreatePollPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate>
-        <label htmlFor="title">Poll title</label>
-        <input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Where should we eat Friday?"
-        />
-        {titleError && <div className="field-error">{titleError}</div>}
+      <form onSubmit={handleSubmit} noValidate className="card" aria-label="Create a poll">
+        <div>
+          <label htmlFor="title">Poll title</label>
+          <input
+            id="title"
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Where should we eat Friday?"
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? 'title-error' : undefined}
+          />
+          {titleError && (
+            <div id="title-error" className="field-error" role="alert">
+              {titleError}
+            </div>
+          )}
+        </div>
 
         <PollOptionsForm
           options={options}
@@ -119,11 +143,11 @@ export default function CreatePollPage() {
           onRemove={removeOption}
           minOptions={MIN_OPTIONS}
           maxOptions={MAX_OPTIONS}
+          countError={optionCountError}
         />
-        {optionCountError && <div className="field-error">{optionCountError}</div>}
 
-        <button type="submit" disabled={!canSubmit}>
-          {submitting ? 'Creating...' : 'Create Poll'}
+        <button type="submit" className="btn btn-primary" disabled={!canSubmit} aria-busy={submitting}>
+          {submitting ? 'Creating…' : 'Create Poll'}
         </button>
       </form>
     </div>

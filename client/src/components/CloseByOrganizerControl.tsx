@@ -8,10 +8,11 @@ interface Props {
 }
 
 export default function CloseByOrganizerControl({ pollId, onClosed }: Props) {
+  const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleClick() {
+  async function handleConfirm() {
     setLoading(true);
     setError(null);
     try {
@@ -25,6 +26,7 @@ export default function CloseByOrganizerControl({ pollId, onClosed }: Props) {
         return;
       }
       setError('Something went wrong. Try again.');
+      setConfirming(false);
     } finally {
       setLoading(false);
     }
@@ -37,9 +39,35 @@ export default function CloseByOrganizerControl({ pollId, onClosed }: Props) {
           {error}
         </div>
       )}
-      <button type="button" onClick={handleClick} disabled={loading}>
-        {loading ? 'Closing...' : 'Close Poll'}
-      </button>
+
+      {confirming ? (
+        <div className="confirm-inline">
+          <span id="close-confirm-label">Close the poll for everyone? This can't be undone.</span>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={handleConfirm}
+            disabled={loading}
+            aria-describedby="close-confirm-label"
+            aria-busy={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner" aria-hidden="true" /> Closing…
+              </>
+            ) : (
+              'Yes, close it'
+            )}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => setConfirming(false)} disabled={loading}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-secondary" onClick={() => setConfirming(true)}>
+          Close Poll
+        </button>
+      )}
     </div>
   );
 }
