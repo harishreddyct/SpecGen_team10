@@ -40,23 +40,3 @@ export function createAppBundle(options: AppBundleOptions): AppBundle {
 
   return { app, server, io, service };
 }
-
-/**
- * Default export for serverless HTTP hosts (e.g. Vercel's Node.js runtime),
- * which load this module directly and invoke its default export as a plain
- * `(req, res)` request handler. An Express app instance is callable with
- * that same signature, so it can be exported as-is.
- *
- * NOTE: this only serves the HTTP API. Socket.IO requires a long-lived
- * connection that serverless functions cannot host, so real-time vote
- * broadcasts will not work through this entrypoint — voting and polling
- * results via the REST API will still function, but `PollSocketGateway`
- * pushes will have no connected clients to reach. For real-time updates in
- * production, run `server/src/index.ts` on a persistent Node host instead.
- */
-const { app: defaultApp } = createAppBundle({
-  clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-  publicBaseUrl: process.env.PUBLIC_BASE_URL || 'http://localhost:5173',
-});
-
-export default defaultApp;
